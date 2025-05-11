@@ -757,6 +757,72 @@ if(WITH_OPTIM)
                 else()
                    message(STATUS "HWCAP_CRC32 not present in sys/auxv.h; cannot detect support at runtime.")
                 endif()
+
+                # Test compiler for sha3 support
+                check_c_source_compiles(
+                    "#include <sys/auxv.h>
+                    int main() {
+                        return (getauxval(AT_HWCAP) & HWCAP_SHA3);
+                    }"
+                    ARM_AUXV_HAS_SHA3
+                )
+                if(ARM_AUXV_HAS_SHA3)
+                    add_definitions(-DARM_AUXV_HAS_SHA3)
+                else()
+                   message(STATUS "HWCAP_SHA3 not present in sys/auxv.h; cannot detect support at runtime.")
+                endif()
+
+                # Test compiler for pmull support
+                check_c_source_compiles(
+                    "#include <sys/auxv.h>
+                    int main() {
+                        return (getauxval(AT_HWCAP) & HWCAP_PMULL);
+                    }"
+                    ARM_AUXV_HAS_PMULL
+                )
+                if(ARM_AUXV_HAS_PMULL)
+                    add_definitions(-DARM_AUXV_HAS_PMULL)
+                else()
+                    check_c_source_compiles(
+                        "#include <sys/auxv.h>
+                        #include <asm/hwcap.h>
+                        int main() {
+                            return (getauxval(AT_HWCAP) & HWCAP_PMULL);
+                        }"
+                        ARM_AUXV_HAS_PMULL
+                    )
+                    if (ARM_AUXV_HAS_PMULL)
+                        add_definitions(-DARM_AUXV_HAS_PMULL -DARM_ASM_HWCAP)
+                    else()
+                        message(STATUS "HWCAP_PMULL not present in headers; cannot detect NEON at runtime.")
+                    endif()
+                endif()
+
+                # Test compiler for neon support
+                check_c_source_compiles(
+                    "#include <sys/auxv.h>
+                    int main() {
+                        return (getauxval(AT_HWCAP) & HWCAP_ASIMD);
+                    }"
+                    ARM_AUXV_HAS_NEON
+                )
+                if(ARM_AUXV_HAS_NEON)
+                    add_definitions(-DARM_AUXV_HAS_NEON)
+                else()
+                    check_c_source_compiles(
+                        "#include <sys/auxv.h>
+                        #include <asm/hwcap.h>
+                        int main() {
+                            return (getauxval(AT_HWCAP) & HWCAP_ASIMD);
+                        }"
+                        ARM_AUXV_HAS_NEON
+                    )
+                    if (ARM_AUXV_HAS_NEON)
+                        add_definitions(-DARM_AUXV_HAS_NEON -DARM_ASM_HWCAP)
+                    else()
+                        message(STATUS "HWCAP_ASIMD not present in headers; cannot detect NEON at runtime.")
+                    endif()
+                endif()
             else()
                 check_c_source_compiles(
                     "#include <sys/auxv.h>
@@ -780,6 +846,29 @@ if(WITH_OPTIM)
                         add_definitions(-DARM_AUXV_HAS_CRC32 -DARM_ASM_HWCAP)
                     else()
                         message(STATUS "HWCAP2_CRC32 not present in sys/auxv.h; cannot detect support at runtime.")
+                    endif()
+                endif()
+                check_c_source_compiles(
+                    "#include <sys/auxv.h>
+                    int main() {
+                      return (getauxval(AT_HWCAP) & HWCAP_ARM_SHA3);
+                    }"
+                    ARM_AUXV_HAS_SHA3
+                )
+                if(ARM_AUXV_HAS_SHA3)
+                    add_definitions(-DARM_AUXV_HAS_SHA3)
+                else()
+                    check_c_source_compiles(
+                        "#include <sys/auxv.h>
+                        int main() {
+                          return (getauxval(AT_HWCAP) & HWCAP_SHA3);
+                        }"
+                        ARM_AUXV_HAS_SHA3
+                    )
+                    if (ARM_AUXV_HAS_SHA3)
+                        add_definitions(-DARM_AUXV_HAS_SHA3)
+                    else()
+                        message(STATUS "Neither HWCAP_ARM_SHA3 or HWCAP_SHA3 present in sys/auxv.h; cannot detect support at runtime.")
                     endif()
                 endif()
                 check_c_source_compiles(
@@ -817,7 +906,10 @@ if(WITH_OPTIM)
             check_armv8_compiler_flag()
             if(HAVE_ARMV8_INLINE_ASM OR HAVE_ARMV8_INTRIN)
                 add_definitions(-DARM_CRC32)
-                set(ARMV8_SRCS ${ARCHDIR}/crc32_armv8.c)
+                set(ARMV8_SRCS 
+                    ${ARCHDIR}/crc32_armv8.c
+                    ${ARCHDIR}/crc32_armv8_pmull.c
+                )
                 set_property(SOURCE ${ARMV8_SRCS} PROPERTY COMPILE_FLAGS "${ARMV8FLAG} ${NOLTOFLAG}")
                 list(APPEND ZLIB_ARCH_SRCS ${ARMV8_SRCS})
                 add_feature_info(ARMV8_CRC 1 "Support ARMv8 optimized CRC hash generation, using \"${ARMV8FLAG}\"")

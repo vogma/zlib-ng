@@ -1,6 +1,9 @@
 #include "zbuild.h"
 #include "arm_features.h"
 
+
+#include "stdio.h"
+
 #if defined(__linux__) && defined(HAVE_SYS_AUXV_H)
 #  include <sys/auxv.h>
 #  ifdef ARM_ASM_HWCAP
@@ -59,6 +62,40 @@ static int arm_has_crc32() {
 #endif
 }
 
+static int arm_has_sha3(void) {
+    #if defined(__linux__) && defined(ARM_AUXV_HAS_SHA3)
+    #  ifdef HWCAP_SHA3
+        /* Linux: check the SHA-3 hwcap bit in AT_HWCAP */
+        return (getauxval(AT_HWCAP) & HWCAP_SHA3) ? 1 : 0;
+    #  else
+    //https://docs.kernel.org/next/arm64/elf_hwcaps.html
+        return (getauxval(AT_HWCAP2) & HWCAP2_SVESHA3) ? 1 : 0;
+    #  endif
+    #elif defined(ARM_NOCHECK_SHA3)
+        /* forced-on for testing or non-runtime-check builds */
+        return 1;
+    #else
+        /* fallback: SHA-3 not detected */
+        return 0;
+    #endif
+}
+
+static int arm_has_pmull(void) {
+    #if defined(__linux__) && defined(ARM_AUXV_HAS_PMULL)
+        #ifdef HWCAP_PMULL
+            return (getauxval(AT_HWCAP) & HWCAP_PMULL) ? 1 : 0;
+        #else
+            return 0;
+        #endif
+    #elif defined(ARM_NOCHECK_PMULL)
+        /* forced-on for testing or non-runtime-check builds */
+        return 1;
+    #else
+        /* fallback: PMULL not detected */
+        return 0;
+    #endif
+}
+
 /* AArch64 has neon. */
 #if !defined(__aarch64__) && !defined(_M_ARM64) && !defined(_M_ARM64EC)
 static inline int arm_has_neon() {
@@ -112,4 +149,13 @@ void Z_INTERNAL arm_check_features(struct arm_cpu_features *features) {
     features->has_neon = arm_has_neon();
 #endif
     features->has_crc32 = arm_has_crc32();
+    features->has_sha3 = arm_has_sha3();
+    features->has_pmull = arm_has_pmull();
+    features->has_simd_crc_full = features->has_crc32 && features->has_pmull && features->has_sha3;
+    features->has_simd_crc_reduced = features->has_crc32 && features->has_pmull;
+    printf("pmull: %d\n",features->has_pmull);
+    printf("sha3: %d\n",features->has_sha3);
+    printf("crc: %d\n",features->has_crc32);
+    printf("simd_crc_full: %d\n",features->has_simd_crc_full);
+    printf("simd_crc_reduced: %d\n",features->has_simd_crc_reduced);
 }

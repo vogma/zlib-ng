@@ -24,6 +24,10 @@ void inflate_fast_neon(PREFIX3(stream) *strm, uint32_t start);
 uint32_t crc32_armv8(uint32_t crc, const uint8_t *buf, size_t len);
 #endif
 
+#if defined(ARM_CRC32) && defined(ARM_NEON)
+uint32_t crc32_pmull(uint32_t crc0, const uint8_t *data, size_t len);
+#endif
+
 #ifdef ARM_SIMD
 void slide_hash_armv6(deflate_state *s);
 #endif

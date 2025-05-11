@@ -205,7 +205,7 @@ static void init_functable(void) {
     // ARM - CRC32
 #ifdef ARM_CRC32
     if (cf.arm.has_crc32) {
-        ft.crc32 = &crc32_armv8;
+        ft.crc32 = &crc32_pmull;
     }
 #endif
 
